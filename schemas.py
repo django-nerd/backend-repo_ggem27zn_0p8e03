@@ -1,48 +1,86 @@
 """
-Database Schemas
+Database Schemas for LMS
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model represents a MongoDB collection.
+Collection name is the lowercase of the class name.
 """
-
-from pydantic import BaseModel, Field
-from typing import Optional
-
-# Example schemas (replace with your own):
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional, List, Dict, Any
+from datetime import datetime
 
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    name: Optional[str] = Field(None, description="Full name")
+    email: EmailStr = Field(..., description="Email address")
+    role: str = Field("student", description="Role: student | teacher | admin")
+    avatar_url: Optional[str] = None
+    locale: str = Field("en", description="Preferred locale: en | ar")
+    points: int = 0
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+class Course(BaseModel):
+    title: str
+    description: Optional[str] = None
+    language: str = Field("en", description="Course language")
+    published: bool = False
+    teacher_email: Optional[EmailStr] = None
+    tags: List[str] = []
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Lesson(BaseModel):
+    course_id: str
+    title: str
+    content: str = Field("", description="HTML or Markdown content of the lesson")
+    order: int = 0
+    language: str = Field("en")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class QuizQuestion(BaseModel):
+    question: str
+    options: List[str] = []
+    answer: Optional[str] = None
+    explanation: Optional[str] = None
+
+class Quiz(BaseModel):
+    lesson_id: str
+    title: str
+    questions: List[QuizQuestion] = []
+
+class Progress(BaseModel):
+    user_email: EmailStr
+    course_id: str
+    lesson_id: Optional[str] = None
+    completed: bool = False
+    score: Optional[float] = None
+
+class Discussion(BaseModel):
+    course_id: str
+    user_email: EmailStr
+    message: str
+    parent_id: Optional[str] = None
+
+class Submission(BaseModel):
+    user_email: EmailStr
+    assignment_id: str
+    content: str
+    grade: Optional[float] = None
+    feedback: Optional[str] = None
+
+class OTP(BaseModel):
+    email: EmailStr
+    code: str
+    expires_at: datetime
+
+class Session(BaseModel):
+    email: EmailStr
+    token: str
+    created_at: datetime
+
+# Export a mapping to help the /schema endpoint (optional)
+SCHEMA_DEFS: Dict[str, Any] = {
+    "user": User.model_json_schema(),
+    "course": Course.model_json_schema(),
+    "lesson": Lesson.model_json_schema(),
+    "quiz": Quiz.model_json_schema(),
+    "progress": Progress.model_json_schema(),
+    "discussion": Discussion.model_json_schema(),
+    "submission": Submission.model_json_schema(),
+    "otp": OTP.model_json_schema(),
+    "session": Session.model_json_schema(),
+}
